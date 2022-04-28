@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Interfaces\UserRepositoryInterface;
+use App\Interfaces\AvatarRepositoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -10,20 +11,11 @@ use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
-    private function handleFileUpload(Request $request, $userData){
-        $avatarName = $request->file('avatar')->getClientOriginalName();
-
-        $avatarHash = hash('md5', "{$userData['nome']} ${userData['data_nascimento']} ${avatarName}").".png";
-
-        Storage::putFileAs('public/images.png', $request->file('avatar'), $avatarHash);
-
-        return $avatarHash;
-    }
-
     private UserRepositoryInterface $userRepository;
 
-    public function __construct(UserRepositoryInterface $userRepository){
+    public function __construct(UserRepositoryInterface $userRepository, AvatarRepositoryInterface $avatarRepository){
         $this->userRepository = $userRepository;
+        $this->avatarRepository = $avatarRepository;
     }
 
     public function index(): JsonResponse {
@@ -42,10 +34,12 @@ class UserController extends Controller
         $userData = $request->only([
             'nome',
             'data_nascimento',
-            'avatar'
         ]);
 
-        $userData['avatar'] = Storage::url("public/images.png/{$this->handleFileUpload($request, $userData)}");
+        if($request->has('avatar')){
+            $avatarId = $this->avatarRepository->createAvatar($request->file('avatar'), $userData);
+            $userData['avatar_id'] = $avatarId->id;
+        }
 
         return response()->json([
             'data' => $this->userRepository->createUser($userData)
@@ -58,15 +52,17 @@ class UserController extends Controller
             'data_nascimento',
         ]);
 
-        // $currentUser = $this->userRepository->getUserById($userId);
-        // $currentAvatarAux = explode('/', $currentUser->avatar);
-        // $currentAvatar = $currentAvatarAux[count($currentAvatarAux)-1];
-        
-        // if(Storage::exists("public/images.png/{$currentAvatar}")){
-        //     $newAvatar = $this->handleFileUpload($request, $newUserData);
-        //     $currentAvatarAux = explode('/', $currentUser->avatar);
-        //     $currentAvatar = $currentAvatarAux[count($currentAvatarAux)-1];
-        // }
+        if($request->has('avatar')){
+            $currentUser = $this->userRepository->getUserById($userId);
+
+            $avatarId = $this->avatarRepository->createAvatar($request->file('avatar'), $newUserData);
+            $newUserData['avatar_id'] = $avatarId->id;
+            $updatedUser = $this->userRepository->updateUser($userId, $newUserData);
+            $this->avatarRepository->deleteAvatar($currentUser->avatar_id);
+            return response()->json([
+                'data' => $updatedUser,
+            ]);
+        }
 
         return response()->json([
             'data' => $this->userRepository->updateUser($userId, $newUserData)
@@ -74,15 +70,11 @@ class UserController extends Controller
     }
 
     public function delete($userId): JsonResponse {
-        $currentUser = $this->userRepository->getUserById($userId);
-        $currentAvatarAux = explode('/', $currentUser->avatar);
-        $currentAvatar = $currentAvatarAux[count($currentAvatarAux)-1];
-        
-        if(Storage::exists("public/images.png/{$currentAvatar}")){
-            Storage::delete("public/images.png/{$currentAvatar}");
-        }
+        $user = $this->userRepository->getUserById($userId);
 
         $this->userRepository->deleteUser($userId);
+
+        $this->avatarRepository->deleteAvatar($user->avatar_id);
 
         return response()->json(['data' => 'usuário removido']);
     }
