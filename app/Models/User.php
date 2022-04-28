@@ -16,4 +16,8 @@ class User extends Model
     protected $fillable = [
         'nome', 'data_nascimento', 'avatar_id'
     ];
+
+    public function avatar(){
+        return $this->hasOne(Avatar::class, 'id', 'avatar_id');
+    }
 }

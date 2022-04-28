@@ -46,27 +46,35 @@ class UserController extends Controller
         ]);
     }
 
-    public function update($userId, Request $request): JsonResponse {
+    public function update($userId, Request $request){
         $newUserData = $request->only([
             'nome',
             'data_nascimento',
         ]);
 
+
         if($request->has('avatar')){
             $currentUser = $this->userRepository->getUserById($userId);
 
-            $avatarId = $this->avatarRepository->createAvatar($request->file('avatar'), $newUserData);
-            $newUserData['avatar_id'] = $avatarId->id;
-            $updatedUser = $this->userRepository->updateUser($userId, $newUserData);
-            $this->avatarRepository->deleteAvatar($currentUser->avatar_id);
+            if($request->input('avatar') == 'remove'){
+                $newUserData['avatar_id'] = null;
+                $updatedUser = $this->userRepository->updateUser($userId, $newUserData);
+                $this->avatarRepository->deleteAvatar($currentUser->avatar_id);
+            }else{
+                $avatarId = $this->avatarRepository->createAvatar($request->file('avatar'), $newUserData);
+                $newUserData['avatar_id'] = $avatarId->id;
+                $updatedUser = $this->userRepository->updateUser($userId, $newUserData);
+                $this->avatarRepository->deleteAvatar($currentUser->avatar_id);
+            }
+
             return response()->json([
                 'data' => $updatedUser,
             ]);
         }
 
-        return response()->json([
-            'data' => $this->userRepository->updateUser($userId, $newUserData)
-        ]);
+        // return response()->json([
+        //     'data' => $this->userRepository->updateUser($userId, $newUserData)
+        // ]);
     }
 
     public function delete($userId): JsonResponse {
@@ -74,7 +82,9 @@ class UserController extends Controller
 
         $this->userRepository->deleteUser($userId);
 
-        $this->avatarRepository->deleteAvatar($user->avatar_id);
+        if($user->avatar_id){
+            $this->avatarRepository->deleteAvatar($user->avatar_id);
+        }
 
         return response()->json(['data' => 'usuário removido']);
     }
