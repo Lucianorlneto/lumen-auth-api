@@ -1,5 +1,7 @@
 FROM alpine:latest
 
+ENV TZ="America/Sao_Paulo"
+
 # Installing PHP
 RUN apk add --no-cache php8 \
 php8-common \

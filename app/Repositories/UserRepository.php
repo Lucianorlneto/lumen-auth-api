@@ -8,11 +8,11 @@ use App\Models\User;
 class UserRepository implements UserRepositoryInterface 
 {
     public function getAllUsers() {
-        return User::all();
+        return User::with('avatar')->orderBy('id')->get();
     }
 
     public function getUserById($userId){
-        return User::findOrFail($userId);
+        return User::with('avatar')->findOrFail($userId);
     }
 
     public function createUser($user) {
