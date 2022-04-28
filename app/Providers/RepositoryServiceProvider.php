@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Interfaces\UserRepositoryInterface;
 use App\Repositories\UserRepository;
+use App\Interfaces\AvatarRepositoryInterface;
+use App\Repositories\AvatarRepository;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -26,5 +28,6 @@ class RepositoryServiceProvider extends ServiceProvider
     public function register()
     {
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
+        $this->app->bind(AvatarRepositoryInterface::class, AvatarRepository::class);
     }
 }
